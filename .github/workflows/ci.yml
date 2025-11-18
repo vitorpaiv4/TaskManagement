@@ -1,0 +1,40 @@
+# .github/workflows/ci.yml
+
+name: Continuous Integration - TaskManagement API
+
+# Define quando este workflow será executado
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+# Define os jobs (tarefas) que serão executadas
+jobs:
+  build-and-test:
+    # O ambiente onde a tarefa será executada (máquina virtual Linux)
+    runs-on: ubuntu-latest
+    
+    steps:
+    # 1. Checkout: Clona o código do repositório
+    - uses: actions/checkout@v4
+    
+    # 2. Setup .NET: Instala o SDK necessário
+    - name: Setup .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x' # Versão que você está usando
+        
+    # 3. Restore: Restaura as dependências do NuGet
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    # 4. Build: Compila a solução para verificar erros de sintaxe e referência
+    - name: Build Solution
+      # O parâmetro --no-restore evita restaurar de novo
+      run: dotnet build --no-restore
+      
+    # 5. Test: Roda os testes unitários do projeto TaskManagement.Tests.Unit
+    # ESSENCIAL: Se qualquer teste falhar, o pipeline falha
+    - name: Run Unit Tests
+      run: dotnet test --no-build --verbosity normal
