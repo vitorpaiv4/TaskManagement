@@ -1,8 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using TaskManagement.Infrastructure.Data;
 using TaskManagement.Domain.Interfaces;
 using TaskManagement.Infrastructure.Repositories;
+using TaskManagement.Infrastructure.Data;
 using TaskManagement.Application.Services;
+using TaskManagement.Application.Factories;
+using Microsoft.EntityFrameworkCore;
 using TaskManagement.Application.Strategies;
 using AppTaskFactory = TaskManagement.Application.Factories.TaskFactory;
 
@@ -22,7 +23,7 @@ app.MapGet("/health", () => Results.Ok(new { status = "OK", message = "TaskManag
 
 app.MapGet("/api/tasks", (ITaskService taskService) =>
 {
-    var tasks = taskService.GetTaskDetails(0);
+    var tasks = taskService.GetTaskDetails(0); // <-- Isso está errado!
     return Results.Ok(tasks);
 });
 
