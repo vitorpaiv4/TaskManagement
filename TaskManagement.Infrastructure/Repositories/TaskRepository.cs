@@ -1,9 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
 using TaskManagement.Domain.Interfaces;
 using TaskManagement.Infrastructure.Data;
-using TaskManagement.Domain.Entities; // Garante que você está usando a Entidade Task
+using TaskManagement.Domain.Entities;
 
 namespace TaskManagement.Infrastructure.Repositories
 {
@@ -16,8 +16,7 @@ namespace TaskManagement.Infrastructure.Repositories
             _context = context;
         }
 
-        // CORRIGIDO: Usa apenas 'Task' em vez do nome completo
-        public Task Add(Task task)
+        public TaskItem Add(TaskItem task)
         {
             _context.Tasks.Add(task);
             _context.SaveChanges();
@@ -34,20 +33,17 @@ namespace TaskManagement.Infrastructure.Repositories
             }
         }
 
-        // CORRIGIDO: Usa apenas 'Task' em vez do nome completo
-        public IEnumerable<Task> GetAll()
+        public IEnumerable<TaskItem> GetAll()
         {
-            return _context.Tasks.Include(t => t.ResponsibleUser).ToList();
+            return _context.Tasks.AsNoTracking().Include(t => t.ResponsibleUser).ToList();
         }
 
-        // CORRIGIDO: Usa apenas 'Task' em vez do nome completo
-        public Task GetById(int id)
+        public TaskItem? GetById(int id)
         {
-            return _context.Tasks.Include(t => t.ResponsibleUser).FirstOrDefault(t => t.Id == id);
+            return _context.Tasks.AsNoTracking().Include(t => t.ResponsibleUser).FirstOrDefault(t => t.Id == id);
         }
 
-        // CORRIGIDO: Usa apenas 'Task' em vez do nome completo
-        public void Update(Task task)
+        public void Update(TaskItem task)
         {
             _context.Tasks.Update(task);
             _context.SaveChanges();

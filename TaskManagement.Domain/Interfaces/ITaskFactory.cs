@@ -1,10 +1,9 @@
-﻿using DomainTask = TaskManagement.Domain.Entities.Task;
+using TaskManagement.Domain.Entities;
 
 namespace TaskManagement.Domain.Interfaces
 {
     public interface ITaskFactory
     {
-        // Define o método para criar uma Task com os dados essenciais
-        DomainTask CreateTask(string title, string description, int? responsibleUserId);
+        TaskItem CreateTask(string title, string description, int? responsibleUserId);
     }
 }

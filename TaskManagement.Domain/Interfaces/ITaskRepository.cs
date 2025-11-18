@@ -1,15 +1,14 @@
-﻿// Define as operações básicas de acesso a dados (CRUD)
 using System.Collections.Generic;
-using DomainTask = TaskManagement.Domain.Entities.Task;
+using TaskManagement.Domain.Entities;
 
 namespace TaskManagement.Domain.Interfaces
 {
     public interface ITaskRepository
     {
-        DomainTask GetById(int id);
-        IEnumerable<DomainTask> GetAll();
-        DomainTask Add(DomainTask task);
-        void Update(DomainTask task);
+        TaskItem? GetById(int id);
+        IEnumerable<TaskItem> GetAll();
+        TaskItem Add(TaskItem task);
+        void Update(TaskItem task);
         void Delete(int id);
     }
 }

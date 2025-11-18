@@ -1,14 +1,12 @@
-﻿namespace TaskManagement.Domain.Entities
+namespace TaskManagement.Domain.Entities
 {
-    // A classe pura que representa um Usuário no sistema
     public class User
     {
         public int Id { get; set; }
-        public string Name { get; set; }
-        public string Email { get; set; }
-        public string PasswordHash { get; set; } // Armazenar senha com hash é fundamental
+        public string Name { get; set; } = null!;
+        public string Email { get; set; } = null!;
+        public string PasswordHash { get; set; } = null!;
 
-        // Lista de tarefas atribuídas a este usuário (opcional, mas útil)
-        public ICollection<Task> AssignedTasks { get; set; } = new List<Task>();
+        public ICollection<TaskItem> AssignedTasks { get; set; } = new List<TaskItem>();
     }
 }

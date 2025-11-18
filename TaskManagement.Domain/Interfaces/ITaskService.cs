@@ -1,13 +1,20 @@
-Ôªø// Define as opera√ß√µes de neg√≥cio que os Controllers ir√£o chamar
-using DomainTask = TaskManagement.Domain.Entities.Task;
+using TaskManagement.Domain.Entities;
+using System.Collections.Generic; // Necess·rio para IEnumerable<Task>
+
 namespace TaskManagement.Domain.Interfaces
 {
     public interface ITaskService
     {
-        // Exemplo: O Service deve encapsular regras, como criar com status padr√£o
-        DomainTask Create(string title, string description, int? responsibleUserId);
-        DomainTask UpdateStatus(int taskId, string newStatus);
-        DomainTask GetTaskDetails(int id);
-        // ... outros m√©todos de neg√≥cio
+        // NOVO: MÈtodo para retornar todas as tarefas, usando IEnumerable
+        IEnumerable<Task> GetAllTasks();
+
+        // MÈtodo Create (ajustado para o Padr„o Factory)
+        Task Create(string title, string description, int? responsibleUserId);
+
+        // MÈtodo para atualizar o status (usa o Padr„o Strategy)
+        Task UpdateStatus(int taskId, string newStatus);
+
+        // MÈtodo para buscar detalhes de uma ˙nica tarefa
+        Task GetTaskDetails(int id);
     }
 }

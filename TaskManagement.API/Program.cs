@@ -1,35 +1,61 @@
-using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
+using TaskManagement.Infrastructure.Data;
+using TaskManagement.Domain.Interfaces;
+using TaskManagement.Infrastructure.Repositories;
+using TaskManagement.Application.Services;
+using TaskManagement.Application.Strategies;
+using AppTaskFactory = TaskManagement.Application.Factories.TaskFactory;
 
-var builder = WebApplication.CreateSlimBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
-});
+builder.Services.AddDbContext<TaskManagementDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<ITaskFactory, AppTaskFactory>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<ITaskStatusStrategy, CompletedStatusStrategy>();
 
 var app = builder.Build();
 
-var sampleTodos = new Todo[] {
-    new(1, "Walk the dog"),
-    new(2, "Do the dishes", DateOnly.FromDateTime(DateTime.Now)),
-    new(3, "Do the laundry", DateOnly.FromDateTime(DateTime.Now.AddDays(1))),
-    new(4, "Clean the bathroom"),
-    new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
-};
+app.MapGet("/health", () => Results.Ok(new { status = "OK", message = "TaskManagement API is running" }));
 
-var todosApi = app.MapGroup("/todos");
-todosApi.MapGet("/", () => sampleTodos);
-todosApi.MapGet("/{id}", (int id) =>
-    sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
-        ? Results.Ok(todo)
-        : Results.NotFound());
+app.MapGet("/api/tasks", (ITaskService taskService) =>
+{
+    var tasks = taskService.GetTaskDetails(0);
+    return Results.Ok(tasks);
+});
+
+app.MapGet("/api/tasks/{id}", (int id, ITaskService taskService) =>
+{
+    var task = taskService.GetTaskDetails(id);
+    return task is not null ? Results.Ok(task) : Results.NotFound();
+});
+
+app.MapPost("/api/tasks", (CreateTaskRequest request, ITaskService taskService) =>
+{
+    var task = taskService.Create(request.Title, request.Description, request.ResponsibleUserId);
+    return Results.Created($"/api/tasks/{task.Id}", task);
+});
+
+app.MapPut("/api/tasks/{id}/status", (int id, UpdateStatusRequest request, ITaskService taskService) =>
+{
+    try
+    {
+        var task = taskService.UpdateStatus(id, request.NewStatus);
+        return Results.Ok(task);
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.BadRequest(new { error = ex.Message });
+    }
+});
 
 app.Run();
 
-public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
-
-[JsonSerializable(typeof(Todo[]))]
-internal partial class AppJsonSerializerContext : JsonSerializerContext
-{
-
-}
+public record CreateTaskRequest(string Title, string Description, int? ResponsibleUserId);
+public record UpdateStatusRequest(string NewStatus);
