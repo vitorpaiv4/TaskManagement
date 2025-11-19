@@ -1,107 +1,110 @@
+using Microsoft.EntityFrameworkCore;
+using TaskManagement.Infrastructure.Data;
 using TaskManagement.Domain.Interfaces;
 using TaskManagement.Infrastructure.Repositories;
-using TaskManagement.Infrastructure.Data;
 using TaskManagement.Application.Services;
-using TaskManagement.Application.Factories;
-using Microsoft.EntityFrameworkCore;
 using TaskManagement.Application.Strategies;
-using TaskManagement.Domain.Entities; // Necessário para TaskItem
-using System.Collections.Generic;
-using System;
-
-// Removendo using's redundantes para evitar conflitos de extensão (o Swashbuckle já está no pacote)
-// using Swashbuckle.AspNetCore.SwaggerUI; 
-// using Microsoft.AspNetCore.Builder; 
-// using Microsoft.Extensions.DependencyInjection; 
-
-using AppTaskFactory = TaskManagement.Application.Factories.TaskFactory;
+using TaskManagement.Application.Factories;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =========================================================================
-// 1. Configuração dos Serviços (Injeção de Dependência)
-// =========================================================================
-
-// Configuração do Swagger para Minimal APIs (necessita do pacote Swashbuckle.AspNetCore)
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Configuração do DbContext e String de Conexão
 builder.Services.AddDbContext<TaskManagementDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Registro dos Contratos e Implementações (SOLID/DIP)
-builder.Services.AddScoped<ITaskRepository, TaskRepository>();
-builder.Services.AddScoped<ITaskFactory, AppTaskFactory>();
-builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IMovementRepository, MovementRepository>();
+builder.Services.AddScoped<IMovementFactory, MovementFactory>();
+builder.Services.AddScoped<IMovementService, MovementService>();
+builder.Services.AddScoped<IMovementStrategy, EntryStrategy>();
+builder.Services.AddScoped<IMovementStrategy, ExitStrategy>();
 
-// Registro do Padrão Strategy
-builder.Services.AddScoped<ITaskStatusStrategy, CompletedStatusStrategy>();
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Sistema de Controle de Estoque API",
+        Version = "v1",
+        Description = "API para gerenciamento de produtos e movimentaÃ§Ãµes de estoque"
+    });
+});
 
 var app = builder.Build();
 
-// =========================================================================
-// 2. Configuração dos Middlewares (Pipeline de Requisição)
-// =========================================================================
-
-// Habilita o Swagger e Swagger UI APENAS no ambiente de Desenvolvimento
 if (app.Environment.IsDevelopment())
 {
-    // Esses métodos de extensão agora devem ser encontrados pelo compilador
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Controle de Estoque API v1");
+        c.RoutePrefix = "swagger";
+    });
 }
 
-app.UseHttpsRedirection();
+app.MapGet("/health", () => Results.Ok(new { status = "OK", message = "Sistema de Controle de Estoque - API Running" }));
 
-// =========================================================================
-// 3. Definição dos Endpoints (Rotas da API)
-// =========================================================================
-
-// HEALTH CHECK
-app.MapGet("/health", () => Results.Ok(new { status = "OK", message = "TaskManagement API is running" }));
-
-// GET ALL: Obtém todas as tarefas
-app.MapGet("/api/tasks", (ITaskService taskService) =>
+app.MapGet("/api/products", (IProductRepository productRepository) =>
 {
-    var tasks = taskService.GetAllTasks();
-    return Results.Ok(tasks);
+    var products = productRepository.GetAll();
+    return Results.Ok(products);
 });
 
-// GET BY ID: Obtém uma tarefa por ID
-app.MapGet("/api/tasks/{id}", (int id, ITaskService taskService) =>
+app.MapGet("/api/products/{id}", (int id, IProductRepository productRepository) =>
 {
-    var task = taskService.GetTaskDetails(id);
-    return task is not null ? Results.Ok(task) : Results.NotFound();
+    var product = productRepository.GetById(id);
+    return product is not null ? Results.Ok(product) : Results.NotFound();
 });
 
-// POST: Cria uma nova tarefa
-app.MapPost("/api/tasks", (CreateTaskRequest request, ITaskService taskService) =>
+app.MapPost("/api/products", (CreateProductRequest request, IProductRepository productRepository) =>
+{
+    var product = new TaskManagement.Domain.Entities.Product
+    {
+        Sku = request.Sku,
+        Name = request.Name,
+        Description = request.Description,
+        Price = request.Price,
+        StockQuantity = 0,
+        CreatedAt = DateTime.UtcNow
+    };
+
+    var created = productRepository.Add(product);
+    return Results.Created($"/api/products/{created.Id}", created);
+});
+
+app.MapGet("/api/movements", (IMovementRepository movementRepository) =>
+{
+    var movements = movementRepository.GetAll();
+    return Results.Ok(movements);
+});
+
+app.MapGet("/api/movements/{id}", (int id, IMovementService movementService) =>
+{
+    var movement = movementService.GetMovementDetails(id);
+    return movement is not null ? Results.Ok(movement) : Results.NotFound();
+});
+
+app.MapPost("/api/movements", (CreateMovementRequest request, IMovementService movementService) =>
 {
     try
     {
-        var task = taskService.Create(request.Title, request.Description, request.ResponsibleUserId);
-        return Results.Created($"/api/tasks/{task.Id}", task);
+        var movement = movementService.ProcessNewMovement(request.ProductId, request.Quantity, request.Type);
+        return Results.Created($"/api/movements/{movement.Id}", movement);
     }
-    catch (Exception ex)
+    catch (KeyNotFoundException ex)
+    {
+        return Results.NotFound(new { error = ex.Message });
+    }
+    catch (ArgumentException ex)
     {
         return Results.BadRequest(new { error = ex.Message });
     }
-});
-
-// PUT: Atualiza o status da tarefa
-app.MapPut("/api/tasks/{id}/status", (int id, UpdateStatusRequest request, ITaskService taskService) =>
-{
-    try
-    {
-        var task = taskService.UpdateStatus(id, request.NewStatus);
-        return Results.Ok(task);
-    }
-    catch (KeyNotFoundException)
-    {
-        return Results.NotFound();
-    }
-    catch (ArgumentException ex)
+    catch (InvalidOperationException ex)
     {
         return Results.BadRequest(new { error = ex.Message });
     }
@@ -109,6 +112,5 @@ app.MapPut("/api/tasks/{id}/status", (int id, UpdateStatusRequest request, ITask
 
 app.Run();
 
-// Records (Modelos de Requisição)
-public record CreateTaskRequest(string Title, string Description, int? ResponsibleUserId);
-public record UpdateStatusRequest(string NewStatus);
+public record CreateProductRequest(string Sku, string Name, string Description, decimal Price);
+public record CreateMovementRequest(int ProductId, int Quantity, string Type);

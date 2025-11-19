@@ -9,50 +9,44 @@ namespace TaskManagement.Infrastructure.Data
         {
         }
 
-        public DbSet<TaskItem> Tasks { get; set; }
-        public DbSet<User> Users { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<Movement> Movements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<User>()
-                .Property(u => u.Name)
-                .IsRequired()
-                .HasMaxLength(200);
-
-            modelBuilder.Entity<User>()
-                .Property(u => u.Email)
-                .IsRequired()
-                .HasMaxLength(256);
-
-            modelBuilder.Entity<User>()
-                .Property(u => u.PasswordHash)
-                .IsRequired()
-                .HasMaxLength(512);
-
-            modelBuilder.Entity<User>()
-                .HasIndex(u => u.Email)
-                .IsUnique();
-
-            modelBuilder.Entity<TaskItem>()
-                .Property(t => t.Title)
-                .IsRequired()
-                .HasMaxLength(200);
-
-            modelBuilder.Entity<TaskItem>()
-                .Property(t => t.Description)
-                .IsRequired()
-                .HasMaxLength(2000);
-
-            modelBuilder.Entity<TaskItem>()
-                .Property(t => t.Status)
+            modelBuilder.Entity<Product>()
+                .Property(p => p.Sku)
                 .IsRequired()
                 .HasMaxLength(50);
 
-            modelBuilder.Entity<TaskItem>()
-                .HasOne(t => t.ResponsibleUser)
-                .WithMany(u => u.AssignedTasks)
-                .HasForeignKey(t => t.ResponsibleUserId)
-                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<Product>()
+                .Property(p => p.Name)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            modelBuilder.Entity<Product>()
+                .Property(p => p.Description)
+                .IsRequired()
+                .HasMaxLength(2000);
+
+            modelBuilder.Entity<Product>()
+                .Property(p => p.Price)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => p.Sku)
+                .IsUnique();
+
+            modelBuilder.Entity<Movement>()
+                .Property(m => m.Type)
+                .IsRequired()
+                .HasMaxLength(20);
+
+            modelBuilder.Entity<Movement>()
+                .HasOne(m => m.Product)
+                .WithMany(p => p.Movements)
+                .HasForeignKey(m => m.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }
